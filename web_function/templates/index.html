@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web App For IOS Debugger</title>
+
+  <!-- 本地 Bootstrap -->
+  <link rel="stylesheet" href="/static/wcss/bootstrap.min.css">
+  <!-- 本地 FontAwesome -->
+  <link rel="stylesheet" href="/static/wcss/all.min.css">
+  <!-- 自定义样式（外部 CSS 文件） -->
+  <link rel="stylesheet" href="/static/wcss/style.css">
+  <!-- SweetAlert -->
+  <link rel="stylesheet" href="/static/wcss/sweetalert2.min.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+  <!-- Header -->
+  <header class="container my-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="flex-grow-1 text-center">
+        <h1>Web App For IOS Debugger</h1>
+      </div>
+      <div class="guide-entry-wrapper">
+        <button id="guide-entry-btn" class="btn btn-outline-primary guide-entry-btn" title="使用指南">
+          📖 使用指南
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="row g-3">
+
+      <!-- 设备管理 -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card shadow-sm">
+          <div class="card-header text-center">
+            <h2 class="card-title">设备管理</h2>
+          </div>
+          <div class="card-body">
+            <select id="device-select" class="form-select mb-2 text-center-select">
+              <option value="">加载中...</option>
+            </select>
+            <div class="row g-2 mb-3">
+              <div class="col-6"><button id="refresh-devices-button" class="btn btn-primary w-100">刷新设备</button></div>
+              <div class="col-6"><button id="dm-reboot-button" class="btn btn-warning w-100">重启设备</button></div>
+              <div id="devmode-status-tip" class="small text-muted mt-2" style="display:none;"></div>
+            </div>
+            <div class="d-grid gap-2 mb-3">
+              <button id="get-device-info-button" class="btn btn-success">获取设备信息</button>
+              <div id="device-info" class="border p-2 small info-list"></div>
+            </div>
+            <div class="border rounded p-2">
+              <div class="small fw-bold mb-2">辅助功能</div>
+              <div class="row g-2">
+                <div class="col-12">
+                  <select id="assistive-feature-select" class="form-select">
+                    <option value="assistivetouch">AssistiveTouch</option>
+                    <option value="voiceover">VoiceOver</option>
+                    <option value="zoom">Zoom</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <div class="row g-2">
+                    <div class="col-6"><button id="assistive-enable-button" class="btn btn-success w-100">开启</button></div>
+                    <div class="col-6"><button id="assistive-disable-button" class="btn btn-danger w-100">关闭</button></div>
+                  </div>
+                </div>
+              </div>
+              <div id="assistive-tip" class="form-text mt-2"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- 应用管理 -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card shadow-sm">
+          <div class="card-header text-center">
+            <h2 class="card-title">应用管理</h2>
+          </div>
+          <div class="card-body">
+            <div class="mb-2">
+              <button id="get-installed-apps-button" class="btn btn-warning w-100">
+                获取已安装的三方应用
+              </button>
+            </div>
+
+            <input type="text" id="app-search-input" class="form-control mb-2" placeholder="搜索名称或 Bundle ID">
+            <select id="app-select" class="form-select mb-2"></select>
+
+            <div class="row g-2 mb-3">
+              <div class="col-6"><button id="launch-app-button" class="btn btn-success w-100">启动应用</button></div>
+              <div class="col-6"><button id="stop-app-button" class="btn btn-danger w-100">停止应用运行</button></div>
+            </div>
+            <div class="d-grid gap-2 mb-3">
+              <button id="apps-running-button" class="btn btn-primary w-100">查看运行中应用</button>
+              <div id="apps-running-list" class="small border p-2 mb-3"></div>
+            </div>
+            <div class="mb-2">
+              <input type="file" id="ipa-file" accept=".ipa" class="form-control">
+              <div class="form-text text-muted">仅支持单个 .ipa 文件</div>
+            </div>
+            <button id="install-ipa-button" class="btn btn-success w-100 mb-3">安装 IPA</button>
+            <div id="install-result-tip" class="small text-muted mt-2"></div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- 截图与录屏 -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card shadow-sm">
+          <div class="card-header text-center">
+            <h2 class="card-title">截图与录屏</h2>
+          </div>
+          <div class="card-body text-center">
+            <!-- 去掉 onclick，事件由 app_ios.js 统一绑定 -->
+            <div class="row g-2 mb-2">
+              <div class="col-6"><button id="take-screenshot-button" class="btn btn-warning w-100">设备截图</button></div>
+              <div class="col-6"><button id="record-screen-button" class="btn btn-primary w-100">设备录屏</button></div>
+            </div>
+            <div id="screenshot-preview"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 日志与配置管理 -->
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card shadow-sm">
+          <div class="card-header text-center">
+            <h2 class="card-title">日志与配置</h2>
+          </div>
+          <div class="card-body">
+
+            <div class="border rounded p-2 mb-3">
+              <div class="small fw-bold mb-2">Crash日志管理</div>
+              <input type="text" id="crash-search-input" class="form-control mb-2" placeholder="搜索关键字或通配 (*ips*)">
+              <div class="mb-2">
+                <button id="crash-list-button" class="btn btn-primary w-100">Crash日志获取</button>
+              </div>
+              <div class="custom-multiselect mb-2" id="crash-multi">
+                <button type="button" class="btn btn-light border trigger w-100" id="crash-multi-trigger" disabled>请选择日志（先点击👆获取）</button>
+                <div class="menu" id="crash-multi-menu" style="display:none;"></div>
+              </div>
+              <select id="crash-select" class="form-select mb-2" style="display:none;"></select>
+              <div class="row g-2">
+                <div class="col-6"><button id="crash-export-button" class="btn btn-success w-100">导出所选</button></div>
+                <div class="col-6"><button id="crash-delete-button" class="btn btn-danger w-100">删除所选</button></div>
+              </div>
+              <div id="crash-export-tip" class="form-text mt-2"></div>
+            </div>
+
+            <div class="border rounded p-2 mb-3">
+              <div class="small fw-bold mb-2">配置文件管理</div>
+              <div class="row g-2 mb-2">
+                <div class="col-6"><button id="profile-list-button" class="btn btn-success w-100">配置获取</button></div>
+                <div class="col-6"><button id="profile-remove-button" class="btn btn-danger w-100">移除所选</button></div>
+              </div>
+              <div id="profile-multi" class="mb-2">
+                <button id="profile-multi-trigger" class="btn btn-light border trigger w-100" type="button" disabled>请选择配置（先点击👆获取）</button>
+                <div id="profile-multi-menu" class="border rounded bg-white p-2 mt-1" style="display:none; position:relative; z-index:1000; max-height:220px; overflow:auto;"></div>
+              </div>
+              <select id="profile-select" class="form-select mb-2" multiple size="5" style="display:none;"></select>
+              <div id="profile-tip" class="form-text mt-2"></div>
+            </div>
+
+            <div class="border rounded p-2 mb-3">
+              <div class="small fw-bold mb-2">系统日志</div>
+              <div class="row g-2 mb-2">
+                <div class="col-6"><button id="syslog-start-button" class="btn btn-primary w-100">开始系统日志</button></div>
+                <div class="col-6"><button id="syslog-stop-button" class="btn btn-danger w-100">停止并下载</button></div>
+              </div>
+              <div class="mt-2 d-grid gap-2 gap-md-2">
+                <div class="row g-2 align-items-center">
+                  <div class="col-12"><input id="syslog-kw" type="text" class="form-control form-control-sm" placeholder="关键字/进程/模块（逗号分隔）"></div>
+                  <div class="col-12">
+                    <select id="syslog-lv" class="form-select form-select-sm">
+                      <option value="">全部级别</option>
+                      <option value="info">info</option>
+                      <option value="warning">warning</option>
+                      <option value="error">error</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                  <button type="button" class="btn btn-success w-100" id="syslog-apply-filter">应用筛选</button>
+                  <button type="button" class="btn btn-danger w-100" id="syslog-clear-live">清空日志</button>
+                </div>
+              </div>
+              <div id="syslog-download-link" class="form-text mt-2"></div>
+              <div id="syslog-live" class="border rounded p-2" style="height: 200px; overflow: auto; background: #0b0e11; color: #c7d5e0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; position: relative;">
+                <div id="syslog-placeholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ffffff; font-size: 14px; text-align: center; pointer-events: none;">日志预览区域</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Loading 遮罩 -->
+  <div id="loading-overlay" style="display:none;">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading...</div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer mt-auto py-3 text-center border-top">
+    <div class="container">
+      <span class="text-muted" id="debug-trigger" style="cursor: pointer; user-select: none;">&copy; 2024–2025 Web App for iOS Debugger. All rights reserved.</span>
+    </div>
+  </footer>
+
+  <!-- JS -->
+  <script src="/static/wjss/jquery.min.js"></script>
+  <script src="/static/wjss/sweetalert2.all.min.js"></script>
+  <script src="/static/wjss/bootstrap.min.js"></script>
+  <script src="/static/wjss/app_ios.js"></script>
+</body>
+</html>

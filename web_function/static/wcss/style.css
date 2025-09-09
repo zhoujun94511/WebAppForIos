@@ -1,0 +1,553 @@
+/* 页面整体样式 */
+body {
+    font-family: Arial, sans-serif; /* 全局字体 */
+    line-height: 1.6;
+    background-color: #f8f9fa; /* 背景色 */
+    padding: 20px;
+    background-image: url('/static/wresource/background.jpg'); /* 背景图片 */
+    background-size: cover;
+    background-position: center;
+    background-repeat: repeat; /* 背景平铺 */
+}
+
+/* 标题样式 */
+h1 {
+    text-align: center;
+    color: #343a40; /* 主要文字颜色 */
+}
+
+/* 引导文档入口样式 */
+.guide-entry-wrapper {
+    position: relative;
+    z-index: 10;
+}
+
+.guide-entry-btn {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border: 2px solid #007bff;
+    color: white;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    transition: all 0.3s ease;
+    animation: pulse-glow 2s infinite;
+}
+
+.guide-entry-btn:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    border-color: #0056b3;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 123, 255, 0.4);
+}
+
+.guide-entry-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.guide-entry-btn {
+    font-size: 14px;
+}
+
+/* 脉冲发光动画 */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(0, 123, 255, 0.5);
+    }
+}
+
+/* 卡片标题居中 */
+.card-title {
+    text-align: center;
+}
+
+/* 卡片样式 */
+.card {
+    border-radius: 8px; /* 圆角 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+}
+
+/* 卡片标题 */
+.card-header h2 {
+    margin-bottom: 0;
+    font-size: 1.5rem;
+}
+
+/* 按钮样式（仅限定 .btn，避免覆盖 Bootstrap 变体） */
+.btn {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}
+
+.btn:active {
+    transform: scale(0.98); /* 按下时缩小 */
+    will-change: transform; /* 提高动画性能 */
+}
+
+/* 表单选择器样式 */
+.form-select {
+    margin-bottom: 10px;
+}
+
+/* 边框样式 */
+.border {
+    border: 1px solid #ced4da;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+/* 新添加的列样式 */
+.col-md-3 {
+    padding: 0 10px; /* 添加内边距 */
+    margin-bottom: 20px; /* 调整列之间的间距 */
+}
+
+/* 加载遮罩和加载图标样式 */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    display: none; /* 默认隐藏 */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid transparent; /* 设置光圈边框为透明 */
+    border-radius: 50%; /* 使光圈呈现圆形 */
+    animation: spin 1s linear infinite; /* 设置光圈旋转动画 */
+    background: conic-gradient(
+        red, orange, yellow, green, blue, indigo, violet, red
+    );
+}
+
+.loading-text {
+    color: #ffffff;
+    margin-top: 10px; /* 调整加载文本位置 */
+}
+
+/* 旋转动画 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 多选下拉菜单样式 */
+.custom-multiselect {
+    position: relative;
+}
+
+.custom-multiselect .trigger {
+    text-align: left;
+    position: relative;
+    padding-right: 30px;
+}
+
+.custom-multiselect .trigger::after {
+    content: '▼';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.custom-multiselect .menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.custom-multiselect .menu label {
+    display: block;
+    padding: 8px 12px;
+    margin: 0;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.custom-multiselect .menu label:hover {
+    background-color: #f8f9fa;
+}
+
+.custom-multiselect .menu label:last-child {
+    border-bottom: none;
+}
+
+.custom-multiselect .menu input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* 系统日志实时显示区域样式 */
+#syslog-live {
+    height: 200px;
+    overflow: auto;
+    background: #0b0e11;
+    color: #c7d5e0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    padding: 10px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* 设备信息展开区域样式 */
+#device-info-more {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* 截图预览区域样式 - 优化占位区域大小 */
+#screenshot-preview {
+    min-height: 610px; /* 调整高度，与系统日志按钮上部平行 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    margin-top: 10px;
+    padding: 20px;
+    transition: all 0.3s ease; /* 平滑过渡效果 */
+}
+
+/* 当预览区域有内容时（工作状态）的样式 */
+#screenshot-preview:not(:empty) {
+    min-height: 610px; /* 保持最小高度，确保与占位状态一致 */
+    align-items: stretch; /* 拉伸内容以填充整个容器 */
+    justify-content: flex-start; /* 内容左对齐 */
+    background-color: transparent; /* 移除背景色 */
+    padding: 0; /* 移除内边距，让内容完全填充 */
+}
+
+/* 工作状态下的内部容器样式 */
+#screenshot-preview:not(:empty) > div {
+    width: 100%;
+    height: 100%;
+    min-height: 610px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 占位文本样式 */
+#screenshot-preview:empty::before {
+    content: "截图与录屏预览区域";
+    color: #6c757d;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+/* 确保截图预览区域内的图片响应式 */
+#screenshot-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+/* 录屏流样式 */
+#screen-stream {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+/* 开发者模式状态提示样式 */
+#devmode-status-tip {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+#devmode-status-tip.enabled {
+    color: #198754;
+    background-color: #d1e7dd;
+    border-color: #badbcc;
+}
+
+#devmode-status-tip.disabled {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border-color: #f5c2c7;
+}
+
+#devmode-status-tip.error {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+}
+
+#devmode-status-tip.checking {
+    color: #0c63e4;
+    background-color: #cfe2ff;
+    border-color: #b6d4fe;
+}
+
+/* 模态框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 7.2% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 600px;
+    border-radius: 5px;
+}
+
+#install-result h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+#install-result h3 {
+    color: #555;
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+#failed-list, #success-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+#failed-list li {
+    color: #d9534f;
+    margin-bottom: 10px;
+}
+
+#success-list li {
+    color: #5cb85c;
+    margin-bottom: 5px;
+}
+
+#success-list li::before {
+    content: "• ";
+    color: #5cb85c;
+}
+
+#close-result {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+}
+
+/* 错误信息样式 */
+.error-message {
+    font-size: 0.9em;
+    color: #777;
+    margin-top: 5px;
+    margin-left: 15px;
+}
+
+/* footer样式 */
+.footer {
+    color: #ffa500;
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 0;
+    height: 50px;
+    font-weight: bold;
+    z-index: 10;
+    background-color: #f8f9fa;
+}
+
+/* 让“已选中的值”居中（含 Firefox） */
+.text-center-select {
+  text-align-last: center;
+  -moz-text-align-last: center;
+}
+
+/* 让下拉列表里的每一行也尽量居中（多数浏览器有效） */
+.text-center-select option {
+  text-align: center;
+}
+
+/* 修正 Bootstrap .form-select 的左右内边距不对称，避免视觉偏左 */
+.text-center-select.form-select {
+  /* Bootstrap 默认：padding: 0.375rem 2.25rem 0.375rem 0.75rem; */
+  padding-left: 2.25rem;        /* 与右侧一致，视觉真正居中 */
+  padding-right: 2.25rem;       /* 保持默认 */
+  background-position: right 0.75rem center; /* 保持箭头位置 */
+}
+
+/* 可选：过长时省略号，别撑破 */
+#device-select {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crash-checkbox-list {
+  max-height: 180px;
+  overflow: auto;
+}
+
+.custom-multiselect {
+  position: relative;
+}
+.custom-multiselect .menu {
+  position: absolute;
+  z-index: 1050;
+  width: 100%;
+  max-height: 220px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.custom-multiselect .menu .menu-toolbar { position: sticky; top: 0; background: #fff; z-index: 1; padding-bottom: 4px; margin-bottom: 6px; border-bottom: 1px solid #e9ecef; }
+.custom-multiselect .menu .form-check {
+  margin-bottom: 4px;
+}
+.custom-multiselect .trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 设备信息统一样式 */
+#device-info.info-list { min-height: 10px; }
+#device-info .info-section-title {
+  font-weight: 600;
+  margin-top: .5rem;
+  margin-bottom: .25rem;
+  color: #212529;
+}
+#device-info > div { line-height: 1.5; margin-bottom: .125rem; }
+#device-info > div strong { display: inline-block; min-width: 7.5em; font-weight: 600; }
+#device-info > div, #device-info > div * { word-break: break-all; }
+#device-info .info-k { display:inline-block; min-width:3em; margin-right:.25rem; font-weight:400; color:#212529; }
+
+/* 回退卡片等高与白底相关样式，恢复原有外观 */
+
+/* 移动端优化 */
+@media (max-width: 576px) {
+  body { padding: 10px; -webkit-tap-highlight-color: transparent; }
+  .card { margin-bottom: 12px; }
+  .card-header { min-height: 40px; }
+  .card-header .card-title { font-size: 1rem; }
+  .card .btn, .card .form-control { min-height: 44px; font-size: 16px; } /* 避免 iOS 自动放大 */
+  .custom-multiselect .menu { max-height: 60vh; }
+  .custom-multiselect .menu .menu-toolbar { padding: 6px 4px; }
+  #device-info .info-k { min-width: 4em; }
+}
+
+/* 设备信息底部折叠按钮 */
+#device-info .info-collapse-btn-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+.info-collapse-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  transition: all .2s ease;
+}
+.info-collapse-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+.info-collapse-btn svg {
+  width: 14px;
+  height: 14px;
+  transition: transform .2s ease;
+}
+.info-collapse-btn[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 576px) {
+  #device-info .info-collapse-btn-wrapper {
+    margin-top: 6px;
+  }
+  .info-collapse-btn {
+    width: 24px;
+    height: 24px;
+  }
+  .info-collapse-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.hl { background: #fffb91; color: #222; padding: 0 1px; border-radius: 2px; }
+
+/* Debug触发器样式 */
+#debug-trigger {
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+#debug-trigger:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  transform: scale(1.02);
+}
+
+#debug-trigger:active {
+  transform: scale(0.98);
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Debug触发器激活状态（可选） */
+#debug-trigger.debug-active {
+  background-color: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
