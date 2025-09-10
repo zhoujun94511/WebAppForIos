@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import json
 import time
@@ -6,8 +5,13 @@ import logging
 import platform
 from typing import Tuple, Dict, Any, Optional
 
-from .goios_wrapper import GoIOSManager
-from .config import Config
+try:
+    from .goios_wrapper import GoIOSManager
+    from .config import Config
+except ImportError:
+    # 当作为独立模块运行时，使用绝对导入
+    from goios_wrapper import GoIOSManager
+    from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +31,7 @@ class TunnelManager:
     def _check_system_requirements() -> Tuple[bool, str]:
         """检查系统要求"""
         system = platform.system().lower()
-        
+
         if system == "windows":
             # 检查wintun.dll
             wintun_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'system32', 'wintun.dll')
@@ -37,7 +41,7 @@ class TunnelManager:
                     "tunnel需要wintun.dll才能正常工作\n"
                     "请检查文件是否存在: C:/Windows/system32/wintun.dll"
                 )
-            
+
             # 检查管理员权限（可选，因为可以使用userspace模式）
             try:
                 import ctypes
@@ -46,7 +50,7 @@ class TunnelManager:
                     logger.debug("未检测到管理员权限，将使用userspace模式")
             except (ImportError, AttributeError, OSError):
                 logger.warning("无法检查Windows管理员权限")
-                
+
         elif system in ["linux", "darwin"]:
             # 检查是否为root或sudo权限
             if os.geteuid() != 0:
@@ -54,18 +58,18 @@ class TunnelManager:
                     f"{system.title()}系统需要root权限启动tunnel\n"
                     "请使用 sudo 权限运行应用"
                 )
-        
+
         return True, "系统要求检查通过"
 
     @staticmethod
     def _get_windows_arch() -> str:
         """获取Windows系统架构"""
         arch = platform.machine().lower()
-        
+
         # 映射架构名称
         arch_mapping = {
             'amd64': 'amd64',
-            'x86_64': 'amd64', 
+            'x86_64': 'amd64',
             'x86': 'x86',
             'i386': 'x86',
             'i686': 'x86',
@@ -73,7 +77,7 @@ class TunnelManager:
             'aarch64': 'arm64',
             'arm': 'arm'
         }
-        
+
         return arch_mapping.get(arch, 'amd64')  # 默认amd64
 
     def _auto_install_wintun(self) -> Tuple[bool, str]:
@@ -81,18 +85,18 @@ class TunnelManager:
         try:
             arch = self._get_windows_arch()
             logger.debug("开始安装 wintun.dll (架构: %s)", arch)
-            
+
             # 构建源文件路径（新结构：IOSPrechecker/wintun/{arch}/wintun.dll）
             wintun_source = os.path.join(Config.IOS_HOME, 'wintun', arch, 'wintun.dll')
             wintun_target = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'system32', 'wintun.dll')
-            
+
             if not os.path.exists(wintun_source):
                 return False, (
                     f"未找到适合当前架构({arch})的 wintun.dll\n"
                     f"源文件路径: {wintun_source}\n"
                     "请检查 IOSPrechecker/wintun/{amd64|x86|arm|arm64} 目录结构"
                 )
-            
+
             # 检查管理员权限
             import ctypes
             if not ctypes.windll.shell32.IsUserAnAdmin():
@@ -100,18 +104,18 @@ class TunnelManager:
                     "需要管理员权限才能安装 wintun.dll\n"
                     "请以管理员身份重新启动应用"
                 )
-            
+
             # 复制文件
             import shutil
             shutil.copy2(wintun_source, wintun_target)
-            
+
             # 验证复制成功
             if os.path.exists(wintun_target):
                 logger.debug("成功复制 wintun.dll: %s -> %s", wintun_source, wintun_target)
                 return True, f"wintun.dll 已自动安装 (架构: {arch})"
             else:
                 return False, "wintun.dll 复制失败，目标文件不存在"
-                
+
         except ImportError as e:
             return False, f"缺少必要模块: {e}"
         except PermissionError:
@@ -141,7 +145,7 @@ class TunnelManager:
                 # 不直接返回失败，而是强制使用用户态模式
                 logger.debug("自动切换到用户态模式(--userspace)")
                 userspace = True
-        
+
         cmd = ["tunnel", "start"]
         if userspace:
             cmd.append("--userspace")
@@ -226,8 +230,8 @@ class TunnelManager:
                 continue
             address = obj.get("address") or obj.get("Address")
             rsd_port = obj.get("rsdPort") or obj.get("rsd_port") or obj.get("RsdPort")
-            userspace_port = (obj.get("userspaceTunPort") or obj.get("userspacePort") or 
-                             obj.get("userspace_port") or obj.get("UserspacePort"))
+            userspace_port = (obj.get("userspaceTunPort") or obj.get("userspacePort") or
+                              obj.get("userspace_port") or obj.get("UserspacePort"))
             opts: Dict[str, Any] = {}
             if address:
                 opts["address"] = address
@@ -312,7 +316,7 @@ class TunnelManager:
         """检查Windows系统的wintun.dll是否存在，缺失时尝试自动安装"""
         if platform.system().lower() != "windows":
             return True, "非Windows系统，无需检查wintun.dll"
-        
+
         wintun_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'system32', 'wintun.dll')
         if os.path.exists(wintun_path):
             return True, "wintun.dll 已存在"
