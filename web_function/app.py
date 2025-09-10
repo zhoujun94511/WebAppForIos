@@ -882,23 +882,35 @@ def api_apps_running():
 # ---------- Crash 日志 ----------
 @app.route("/api/crash/ls")
 def api_crash_ls():
+    import os
     udid = request.args.get("udid", "").strip()
     pattern_input = (request.args.get("pattern") or "").strip()
     if not udid:
         return jsonify({"ok": False, "msg": "缺少 udid"}), 400
+
     ok_pre, pre_msg = prechecker.quick_check(udid)
     if not ok_pre:
         return jsonify({"ok": False, "msg": pre_msg}), 400
+
     # 模式：含通配符(*, ?)走 go-ios 侧过滤；否则后端全量+不区分大小写包含匹配
     has_glob = any(ch in pattern_input for ch in ("*", "?")) if pattern_input else False
     go_pattern = pattern_input if has_glob else None
-    ok_list, raw = run_with_quick_check_and_escalate(prechecker, udid, lambda: goios.crash_ls(udid, go_pattern))
+
+    ok_list, raw = run_with_quick_check_and_escalate(
+        prechecker, udid, lambda: goios.crash_ls(udid, go_pattern)
+    )
     items = parse_crash_ls_items(raw) if ok_list and raw else []
+
     if ok_list and items and pattern_input and not has_glob:
         kw = pattern_input.lower()
         items = [x for x in items if kw in x.lower()]
+
+    # ✅ 只保留带扩展名的文件（过滤掉目录、无后缀）
+    items = [x for x in items if "." in os.path.basename(x)]
+
     return jsonify({"ok": ok_list, "items": items, "raw": raw})
 
+# ---------- Crash 日志 ----------
 @app.route("/api/crash/cp", methods=["POST"])
 def api_crash_cp():
     data = request.get_json(silent=True) or {}
@@ -908,21 +920,29 @@ def api_crash_cp():
     # 仅允许复制到服务端的 UPLOAD_FOLDER/crashes/<uuid>/
     crash_root = os.path.join(app.config["UPLOAD_FOLDER"], "crashes")
     os.makedirs(crash_root, exist_ok=True)
-    batch_dir = os.path.join(crash_root, uuid.uuid4().hex)
-    os.makedirs(batch_dir, exist_ok=True)
+    # batch_dir = os.path.join(crash_root, uuid.uuid4().hex)
+    # os.makedirs(batch_dir, exist_ok=True)
+
     if not udid:
         return jsonify({"ok": False, "msg": "缺少 udid"}), 400
+
     # 收集导出文件（执行前 quick_check，失败升级）
     def _do_export():
-        ok_, raw_ = True, None
-        res = crash_export_collect(goios, udid, patterns if patterns else [pattern], crash_root, logger=app.logger)
+        res = crash_export_collect(
+            goios, udid,
+            patterns if patterns else [pattern],
+            crash_root,
+            logger=app.logger
+        )
         # 用 ok/raw 表示整体结果
         return bool(res.get("ok")), res
+
     ok_flag, result = run_with_quick_check_and_escalate(prechecker, udid, _do_export)
     files = (result or {}).get("files") or []
+    app.logger.info("Crash 导出: udid=%s, ok=%s, files=%s", udid, ok_flag, files)
     download_url = None
-    # 保留变量名称占位，当前逻辑不再使用多链接下载
     zip_name = ""
+
     if ok_flag:
         count = len(files)
         if count == 1:
@@ -944,26 +964,90 @@ def api_crash_cp():
         "ok": ok_flag,
         "zip": zip_name,
         "download_url": download_url,
-        "download_urls": None,
+        "download_urls": None,   # 预留字段，未来支持多链接
         "raw": (result or {}).get("raw")
     })
 
 @app.route("/api/crash/rm", methods=["POST"])
 def api_crash_rm():
+    import os
     data = request.get_json(silent=True) or {}
     udid = (data.get("udid") or "").strip()
     cwd = (data.get("cwd") or ".").strip() or "."
     pattern = (data.get("pattern") or "*").strip() or "*"
     patterns = data.get("patterns") if isinstance(data.get("patterns"), list) else None
     recursive = bool(data.get("recursive", True))
+
     if not udid:
         return jsonify({"ok": False, "msg": "缺少 udid"}), 400
+
     def _do_rm():
-        ok_, raw_ = True, None
-        res = crash_remove_many(goios, udid, patterns if patterns else [pattern], cwd=cwd, recursive=recursive)
+        res = crash_remove_many(
+            goios, udid,
+            patterns if patterns else [pattern],
+            cwd=cwd,
+            recursive=recursive
+        )
         return bool(res.get("ok")), res
+
     ok_rm, res_rm = run_with_quick_check_and_escalate(prechecker, udid, _do_rm)
-    return jsonify({"ok": bool((res_rm or {}).get("ok")), "raw": (res_rm or {}).get("raw")})
+
+    raw_output = (res_rm or {}).get("raw", "")
+    success = bool((res_rm or {}).get("ok"))
+
+    # === 提取删除的文件名（只保留带扩展名的文件） ===
+    deleted_files = []
+    try:
+        for line in raw_output.strip().splitlines():
+            if line.strip().startswith("{"):
+                obj = json.loads(line)
+                if obj.get("msg") == "delete" and "path" in obj:
+                    path = obj["path"]
+                    if "." in os.path.basename(path):  # ✅ 只要带后缀的文件
+                        deleted_files.append(path)
+    except Exception as e:
+        app.logger.warning("Crash 删除日志解析失败: %s", e)
+
+    # === 日志输出 ===
+    if deleted_files:
+        app.logger.info("Crash 删除: udid=%s, success=%s, deleted_files=%s",
+                        udid, success, deleted_files)
+    else:
+        snippet = raw_output[:200] + "..." if len(raw_output) > 200 else raw_output
+        app.logger.info("Crash 删除: udid=%s, success=%s, raw_snippet=%s",
+                        udid, success, snippet)
+
+    # === 错误返回 ===
+    if not success and raw_output:
+        if "permission denied" in raw_output.lower() or "access denied" in raw_output.lower():
+            error_msg = "权限不足，无法删除某些 crash 文件。可能需要管理员权限或设备解锁。"
+        elif "no such file" in raw_output.lower() or "file not found" in raw_output.lower():
+            error_msg = "部分文件不存在或已被删除。"
+        elif "usage:" in raw_output.lower() or "help" in raw_output.lower():
+            error_msg = "删除命令参数不正确，请检查 pattern 和 cwd 参数。"
+        else:
+            error_msg = f"删除失败: {raw_output}"
+
+        return jsonify({
+            "ok": False,
+            "msg": error_msg,
+            "raw": raw_output,
+            "diagnostic": {
+                "udid": udid,
+                "cwd": cwd,
+                "pattern": pattern,
+                "patterns": patterns,
+                "recursive": recursive,
+                "suggestion": "尝试使用更具体的 pattern 或检查文件权限"
+            }
+        })
+
+    return jsonify({
+        "ok": success,
+        "msg": "删除操作完成" if success else "删除操作失败",
+        "raw": raw_output,
+        "deleted_files": deleted_files
+    })
 
 # ---------- 配置文件管理 ----------
 @app.route("/api/profile/list")
