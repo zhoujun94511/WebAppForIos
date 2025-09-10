@@ -1,17 +1,17 @@
 import re
 import os
-import json
-import socket
-import logging
-import signal
-import datetime
-import subprocess
-import time
-import threading
-import requests
 import cv2
-import zipfile
+import json
+import time
 import uuid
+import socket
+import signal
+import zipfile
+import logging
+import datetime
+import requests
+import threading
+import subprocess
 
 # 条件导入
 try:
@@ -23,7 +23,6 @@ try:
     import numpy as np
 except ImportError:
     np = None
-
 from typing import Any, Dict, List, Optional
 from requests.exceptions import RequestException
 
@@ -110,6 +109,7 @@ def get_local_ip() -> Optional[str]:
 
 UNKNOWN = "UNKNOWN"
 
+
 def _pick(d: Dict[str, Any], keys: List[str], default: Optional[str] = UNKNOWN):
     """从字典 d 里按顺序取第一个有值(key 存在且值不为空)的键。"""
     for k in keys:
@@ -136,9 +136,11 @@ ORDERED_IOS_INFO_LABELS: List[str] = [
     "以太网地址",
 ]
 
+
 def format_product_model(model: Optional[str]) -> str:
     s = str(model or "").strip()
     return s.split(",")[0] if s else s
+
 
 def normalize_ios_info(raw: Dict[str, Any]) -> Dict[str, Any]:
     """规范化 go-ios JSON 输出"""
@@ -163,6 +165,7 @@ def normalize_ios_info(raw: Dict[str, Any]) -> Dict[str, Any]:
             info_map[k] = UNKNOWN
     return info_map
 
+
 def build_ordered_ios_info(info_map: Dict[str, Any]) -> List[Dict[str, str]]:
     """转成有序数组"""
     return [{"label": lab, "value": str(info_map.get(lab, UNKNOWN))} for lab in ORDERED_IOS_INFO_LABELS]
@@ -183,7 +186,8 @@ def normalize_ios_list_output(raw: str) -> List[Dict[str, Any]]:
 
     def pick(rec: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            "udid": rec.get("udid") or rec.get("UDID") or rec.get("Udid") or rec.get("UniqueDeviceID") or rec.get("serialNumber"),
+            "udid": rec.get("udid") or rec.get("UDID") or rec.get("Udid") or rec.get("UniqueDeviceID") or rec.get(
+                "serialNumber"),
             "name": rec.get("name") or rec.get("DeviceName") or rec.get("ProductName"),
             "model": format_product_model(rec.get("model") or rec.get("ProductType") or rec.get("productType")),
             "version": rec.get("version") or rec.get("ProductVersion") or rec.get("productVersion"),
@@ -226,6 +230,7 @@ def _is_system_bundle(bundle_id: Optional[str], app_type: Optional[str]) -> bool
     if app_type and isinstance(app_type, str) and "system" in app_type.lower():
         return True
     return bool(bundle_id) and str(bundle_id).startswith("com.apple.")
+
 
 def parse_ios_apps(raw: str, third_party_only: bool = True) -> List[Dict[str, str]]:
     """解析 go-ios apps 输出"""
@@ -282,6 +287,7 @@ def parse_ios_apps(raw: str, third_party_only: bool = True) -> List[Dict[str, st
             seen.add(bid)
             uniq.append(app)
     return uniq
+
 
 # === 工具函数 ===
 
@@ -414,15 +420,15 @@ def cleanup_all_ios_processes(logger=None) -> None:
 def create_required_directories(config, logger=None) -> None:
     """创建必要的目录"""
     dirs = [
-        config.get("UPLOAD_FOLDER"),
-        config.get("LOG_DIR"),
-        config.get("GOIOS_DIR"),
-        config.get("GOIOS_EXECUTABLE_DIR"),
-        config.get("DEVIMAGES_DIR"),
-        os.path.join(config.get("IOS_HOME", ""), 'wintun', 'amd64'),
-        os.path.join(config.get("IOS_HOME", ""), 'wintun', 'arm'),
-        os.path.join(config.get("IOS_HOME", ""), 'wintun', 'arm64'),
-        os.path.join(config.get("IOS_HOME", ""), 'wintun', 'x86'),
+        getattr(config, "UPLOAD_FOLDER", None),
+        getattr(config, "LOG_DIR", None),
+        getattr(config, "GOIOS_DIR", None),
+        getattr(config, "GOIOS_EXECUTABLE_DIR", None),
+        getattr(config, "DEVIMAGES_DIR", None),
+        os.path.join(getattr(config, "IOS_HOME", ""), 'wintun', 'amd64'),
+        os.path.join(getattr(config, "IOS_HOME", ""), 'wintun', 'arm'),
+        os.path.join(getattr(config, "IOS_HOME", ""), 'wintun', 'arm64'),
+        os.path.join(getattr(config, "IOS_HOME", ""), 'wintun', 'x86'),
     ]
     for d in dirs:
         if d:
@@ -436,7 +442,7 @@ def create_required_directories(config, logger=None) -> None:
 
     # 启动下载目录清理守护线程（仅启动一次）
     try:
-        download_dir = config.get("UPLOAD_FOLDER")
+        download_dir = getattr(config, "UPLOAD_FOLDER", None)
         if download_dir:
             _start_downloads_janitor(download_dir, logger=logger)
     except Exception as e:
@@ -474,14 +480,14 @@ def terminate_process(process) -> None:
                 import psutil
                 parent = psutil.Process(process.pid)
                 children = parent.children(recursive=True)
-                
+
                 # 先终止子进程
                 for child in children:
                     try:
                         child.terminate()
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         pass
-                
+
                 # 等待子进程终止
                 try:
                     psutil.wait_procs(children, timeout=3)
@@ -493,7 +499,7 @@ def terminate_process(process) -> None:
                                 child.kill()
                         except (psutil.NoSuchProcess, psutil.AccessDenied):
                             pass
-                
+
                 # 终止父进程
                 try:
                     parent.terminate()
@@ -503,7 +509,7 @@ def terminate_process(process) -> None:
                         parent.kill()
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         pass
-                        
+
             except ImportError:
                 # 如果没有psutil，使用传统方法
                 if os.name == "nt":
@@ -518,7 +524,7 @@ def terminate_process(process) -> None:
                         process.wait(timeout=5)
                     except subprocess.TimeoutExpired:
                         os.kill(process.pid, signal.SIGKILL)
-                        
+
     except Exception as e:
         logging.warning("终止子进程失败: %s", e)
 
@@ -548,11 +554,11 @@ def now_timestamp_str() -> str:
 # === MJPEG 录屏 ===
 
 def _start_manual_mjpeg_recording(
-    mjpeg_url: str,
-    out_dir: str,
-    basename: str,
-    stop_evt: threading.Event,
-    logger: Optional[logging.Logger] = None,
+        mjpeg_url: str,
+        out_dir: str,
+        basename: str,
+        stop_evt: threading.Event,
+        logger: Optional[logging.Logger] = None,
 ) -> Dict[str, Any]:
     """
     手动解析 MJPEG 流并保存为 MP4 文件。
@@ -620,7 +626,7 @@ def _start_manual_mjpeg_recording(
                             last_ts = time.time()
                             if logger:
                                 logger.debug("初始化 VideoWriter: %s [%dx%d @ %.1f fps]",
-                                            mp4_path, w, h, target_fps)
+                                             mp4_path, w, h, target_fps)
                         else:
                             # 若帧尺寸变化（如旋转），统一到初始尺寸
                             if (w != target_w) or (h != target_h):
@@ -671,6 +677,7 @@ def _start_manual_mjpeg_recording(
     th.start()
     return {"stop_evt": stop_evt, "thread": th, "path": mp4_path, "name": mp4_name, "format": "mp4"}
 
+
 def _record_mjpeg_fallback(mjpeg_url: str, out_path: str, stop_event: threading.Event,
                            logger: Optional[logging.Logger] = None) -> None:
     """回退：直接把 MJPEG 流保存为 .mjpeg"""
@@ -691,6 +698,7 @@ def _record_mjpeg_fallback(mjpeg_url: str, out_path: str, stop_event: threading.
     except (OSError, IOError) as e:
         if logger:
             logger.error("MJPEG 文件写入错误: %s", e)
+
 
 def _safe_fourcc(codec_str: str):
     try:
@@ -714,6 +722,7 @@ def _start_mjpeg_fallback(mjpeg_url: str, out_dir: str, basename: str,
     th = threading.Thread(target=_worker, daemon=True, name=f"MJPEG-{basename}")
     th.start()
     return {"stop_evt": stop_evt, "thread": th, "path": mjpeg_path, "name": mjpeg_name, "format": "mjpeg"}
+
 
 def start_mjpeg_to_mp4(mjpeg_url: str, out_dir: str, basename: str,
                        logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
@@ -744,12 +753,14 @@ def stop_recorder(rec_ctx: Dict[str, Any], join_timeout: float = 5.0) -> None:
         if th.is_alive():
             logging.warning("录制线程 %s 在 %.1f 秒后仍在运行", th.name, join_timeout)
 
+
 # === 下载目录自动清理 ===
 _downloads_janitor_started = False
 _downloads_janitor_lock = threading.Lock()
 
 
-def _downloads_cleanup_once(download_dir: str, max_age_seconds: int = 1800, logger: Optional[logging.Logger] = None) -> None:
+def _downloads_cleanup_once(download_dir: str, max_age_seconds: int = 1800,
+                            logger: Optional[logging.Logger] = None) -> None:
     """执行一次清理：删除下载目录内超过 max_age_seconds 的普通文件。
     - 忽略子目录
     - 文件被占用/权限错误时跳过
@@ -818,15 +829,18 @@ def _start_downloads_janitor(download_dir: str,
     th = threading.Thread(target=_worker, daemon=True, name="DownloadsJanitor")
     th.start()
 
+
 # === 签名下载令牌（通用） ===
 _SIGNED_DOWNLOADS_STORE: Dict[str, Dict[str, Any]] = {}
 
+
 def create_signed_download_token(filename: str, ttl_seconds: int = 600) -> str:
-    token = uuid.uuid4().hex if 'uuid' in globals() else str(int(time.time()*1000))
+    token = uuid.uuid4().hex if 'uuid' in globals() else str(int(time.time() * 1000))
     expire_at = time.time() + max(30, ttl_seconds)
     rel = str(filename).replace("\\", "/").lstrip("/")
     _SIGNED_DOWNLOADS_STORE[token] = {"file": rel, "expire": expire_at}
     return token
+
 
 def consume_signed_download_token(token: str) -> str:
     info = _SIGNED_DOWNLOADS_STORE.pop(token, None)
@@ -835,6 +849,7 @@ def consume_signed_download_token(token: str) -> str:
     if time.time() > float(info.get("expire", 0)):
         raise KeyError("expired token")
     return str(info.get("file"))
+
 
 # === ps --apps 解析 ===
 
@@ -855,6 +870,7 @@ def parse_ps_apps_raw(raw: str) -> List[Dict[str, Any]]:
         pass
     return result
 
+
 # === 电池详情合并 ===
 
 def build_battery_detail(goios_manager, udid: str, **opts) -> Dict[str, Any]:
@@ -872,6 +888,7 @@ def build_battery_detail(goios_manager, udid: str, **opts) -> Dict[str, Any]:
     except json.JSONDecodeError:
         detail["batteryregistry"] = None
     return detail
+
 
 # === 磁盘信息解析（支持 JSON 或文本） ===
 
@@ -901,9 +918,11 @@ def parse_diskspace_summary(raw: str) -> Dict[str, Any]:
     summary["TotalSpace"] = mt.group(1).strip() if mt else None
     return summary
 
+
 # === Crash 导出/删除 ===
 
-def crash_export_zip(goios_manager, udid: str, patterns: List[str], crash_root: str, logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
+def crash_export_zip(goios_manager, udid: str, patterns: List[str], crash_root: str,
+                     logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
     os.makedirs(crash_root, exist_ok=True)
     batch_dir = os.path.join(crash_root, uuid.uuid4().hex if 'uuid' in globals() else str(int(time.time())))
     os.makedirs(batch_dir, exist_ok=True)
@@ -929,17 +948,73 @@ def crash_export_zip(goios_manager, udid: str, patterns: List[str], crash_root: 
     return {"ok": ok_all, "zip_path": zip_path, "raw": "\n".join(raws)}
 
 
-def crash_remove_many(goios_manager, udid: str, patterns: List[str], cwd: str = ".", recursive: bool = False) -> Dict[str, Any]:
+def crash_remove_many(goios_manager, udid: str, patterns: List[str], cwd: str = ".", recursive: bool = False) -> Dict[
+    str, Any]:
     pats = patterns or ["*"]
     all_ok = True
     raws: List[str] = []
-    for pat in pats:
-        ok_rm, raw_rm = goios_manager.crash_rm(udid, cwd, str(pat), recursive=recursive)
-        all_ok = all_ok and ok_rm
-        raws.append(raw_rm)
-    return {"ok": all_ok, "raw": "\n".join(raws)}
+    results: List[Dict[str, Any]] = []
 
-def crash_export_collect(goios_manager, udid: str, patterns: List[str], crash_root: str, logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
+    for pat in pats:
+        try:
+            ok_rm, raw_rm = goios_manager.crash_rm(udid, cwd, str(pat), recursive=recursive)
+            all_ok = all_ok and ok_rm
+            raws.append(raw_rm)
+
+            # 记录每个pattern的删除结果
+            result = {
+                "pattern": pat,
+                "success": ok_rm,
+                "output": raw_rm,
+                "cwd": cwd,
+                "recursive": recursive
+            }
+
+            # 分析失败原因
+            if not ok_rm:
+                if "permission denied" in raw_rm.lower() or "access denied" in raw_rm.lower():
+                    result["error_type"] = "permission_denied"
+                    result["suggestion"] = "检查文件权限或设备锁定状态"
+                elif "no such file" in raw_rm.lower() or "file not found" in raw_rm.lower():
+                    result["error_type"] = "file_not_found"
+                    result["suggestion"] = "文件可能已被删除或路径不正确"
+                elif "usage:" in raw_rm.lower() or "help" in raw_rm.lower():
+                    result["error_type"] = "invalid_parameters"
+                    result["suggestion"] = "检查pattern和cwd参数格式"
+                else:
+                    result["error_type"] = "unknown_error"
+                    result["suggestion"] = "检查go-ios命令输出获取更多信息"
+
+            results.append(result)
+
+        except Exception as e:
+            all_ok = False
+            error_msg = f"删除pattern '{pat}'时发生异常: {str(e)}"
+            raws.append(error_msg)
+            results.append({
+                "pattern": pat,
+                "success": False,
+                "output": error_msg,
+                "error_type": "exception",
+                "suggestion": "检查go-ios进程状态和网络连接"
+            })
+
+    return {
+        "ok": all_ok,
+        "raw": "\n".join(raws),
+        "results": results,
+        "summary": {
+            "total_patterns": len(pats),
+            "successful_deletions": sum(1 for r in results if r["success"]),
+            "failed_deletions": sum(1 for r in results if not r["success"]),
+            "cwd": cwd,
+            "recursive": recursive
+        }
+    }
+
+
+def crash_export_collect(goios_manager, udid: str, patterns: List[str], crash_root: str,
+                         logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
     os.makedirs(crash_root, exist_ok=True)
     batch_dir = os.path.join(crash_root, uuid.uuid4().hex if 'uuid' in globals() else str(int(time.time())))
     os.makedirs(batch_dir, exist_ok=True)
@@ -989,6 +1064,7 @@ def crash_zip_dir(batch_dir: str, crash_root: str, logger: Optional[logging.Logg
             logger.warning("打包 crash 目录失败: %s", exc)
         return None
 
+
 # === 系统日志会话（写文件） ===
 
 def _drain_syslog_to_file(proc, path: str, logger: Optional[logging.Logger] = None) -> None:
@@ -1008,7 +1084,8 @@ def _drain_syslog_to_file(proc, path: str, logger: Optional[logging.Logger] = No
             logger.debug("syslog 写入未知异常: %s", exc)
 
 
-def syslog_start_session(goios_manager, udid: str, out_dir: str, parse: bool = True, logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
+def syslog_start_session(goios_manager, udid: str, out_dir: str, parse: bool = True,
+                         logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
     p = goios_manager.syslog_stream_popen_parsed(udid=udid, parse=parse)
     if p is None:
         return {"ok": False, "msg": "启动 syslog 失败"}
@@ -1017,6 +1094,7 @@ def syslog_start_session(goios_manager, udid: str, out_dir: str, parse: bool = T
     t = threading.Thread(target=_drain_syslog_to_file, args=(p, path, logger), daemon=True, name=f"Syslog-{udid}")
     t.start()
     return {"ok": True, "p": p, "name": name, "path": path}
+
 
 # === 设备事件监听（SSE生成器） ===
 
@@ -1038,9 +1116,11 @@ def listen_event_stream(goios_manager):
         except (OSError, AttributeError) as exc:
             logging.debug("listen_popen 终止异常: %s", exc)
 
+
 def parse_crash_ls_items(raw: str) -> List[str]:
     items: List[str] = []
     raw = raw or ""
+
     # 1) 先尝试整体 JSON
     def _push_files(files_in):
         for x in files_in or []:
@@ -1105,7 +1185,12 @@ def stream_syslog_sse(goios_manager, udid: str, parse: bool = True, logger: Opti
                       existing_process=None):
     """基于 go-ios syslog 的 SSE 生成器。客户端断开后终止进程。"""
     # 如果提供了现有进程，使用它；否则创建新的
-    p = existing_process or goios_manager.syslog_stream_popen_parsed(udid=udid, parse=parse)
+    p = existing_process
+    if not p:
+        if logger:
+            logger.warning("没有提供现有进程，创建新的syslog进程: udid=%s", udid)
+        p = goios_manager.syslog_stream_popen_parsed(udid=udid, parse=parse)
+
     kw_list = [str(k or "").lower() for k in (keywords or []) if str(k or "").strip()]
     lv_set = set([str(l or "").lower() for l in (levels or []) if str(l or "").strip()])
 
@@ -1129,12 +1214,15 @@ def stream_syslog_sse(goios_manager, udid: str, parse: bool = True, logger: Opti
             return "error"
         # 常见信息级别：info/notice/default/debug
         return "info"
+
     try:
         if not p or not getattr(p, 'stdout', None):
             yield "event: error\ndata: failed to start syslog\n\n"
             return
+
         # 立即发送一次注释/心跳，触发浏览器接收响应头并建立 EventSource
         yield ": heartbeat\n\n"
+
         for line in p.stdout:
             if not line:
                 break
@@ -1147,7 +1235,9 @@ def stream_syslog_sse(goios_manager, udid: str, parse: bool = True, logger: Opti
                     obj = None
                 if isinstance(obj, dict):
                     msg_val = str(obj.get("Message") or obj.get("message") or obj.get("msg") or "")
-                    proc_val = str(obj.get("Process") or obj.get("process") or obj.get("Sender") or obj.get("Image") or obj.get("Program") or "")
+                    proc_val = str(
+                        obj.get("Process") or obj.get("process") or obj.get("Sender") or obj.get("Image") or obj.get(
+                            "Program") or "")
                     raw_level = obj.get("Level") or obj.get("level") or obj.get("Priority") or ""
                     bucket = _bucketize_level(raw_level)
                     low_msg = msg_val.lower()
@@ -1174,6 +1264,8 @@ def stream_syslog_sse(goios_manager, udid: str, parse: bool = True, logger: Opti
         # 只有当进程是我们创建的（不是传入的现有进程）时才终止
         if not existing_process and p:
             try:
+                if logger:
+                    logger.debug("终止新创建的syslog进程: udid=%s", udid)
                 p.terminate()
             except (OSError, AttributeError) as exc:
                 if logger:
