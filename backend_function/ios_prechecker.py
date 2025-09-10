@@ -1,12 +1,18 @@
-# -*- coding: utf-8 -*-
 import time
 import logging
 import threading
 from typing import Tuple
-from .tunnel_manager import TunnelManager
-from .goios_wrapper import GoIOSManager
-from .common_utils import find_free_port
-from .config import Config
+try:
+    from .tunnel_manager import TunnelManager
+    from .goios_wrapper import GoIOSManager
+    from .common_utils import find_free_port
+    from .config import Config
+except ImportError:
+    # 当作为独立模块运行时，使用绝对导入
+    from tunnel_manager import TunnelManager
+    from goios_wrapper import GoIOSManager
+    from common_utils import find_free_port
+    from config import Config
 
 logger = logging.getLogger(__name__)
 
