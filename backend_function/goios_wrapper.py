@@ -56,11 +56,11 @@ class GoIOSManager:
         m = (platform.machine() or "").lower()
         preferred = []
         if any(x in m for x in ("aarch64", "arm64")):
-            preferred += ["ios-arm64", "ios"]   # Apple Silicon / ARM Linux
+            preferred += ["ios-arm64", "ios"]  # Apple Silicon / ARM Linux
         elif any(x in m for x in ("x86_64", "amd64", "x64")):
             preferred += ["ios-amd64", "ios"]  # x86_64 Linux
         else:
-            preferred += ["ios"]                # 兜底
+            preferred += ["ios"]  # 兜底
 
         # 跨平台常见别名一并加入（用于 Mac/Win 或历史包）
         preferred += ["go-ios", "ios.exe", "go-ios.exe", "ios-arm64.exe", "ios-amd64.exe"]
@@ -173,16 +173,16 @@ class GoIOSManager:
 
     @staticmethod
     def _build_common_opts(
-        udid: Optional[str] = None,
-        address: Optional[str] = None,
-        rsd_port: Optional[int] = None,
-        userspace_port: Optional[int] = None,
-        proxyurl: Optional[str] = None,
-        tunnel_info_port: Optional[int] = None,
-        verbose: bool = False,
-        trace: bool = False,
-        nojson: bool = False,
-        pretty: bool = False,
+            udid: Optional[str] = None,
+            address: Optional[str] = None,
+            rsd_port: Optional[int] = None,
+            userspace_port: Optional[int] = None,
+            proxyurl: Optional[str] = None,
+            tunnel_info_port: Optional[int] = None,
+            verbose: bool = False,
+            trace: bool = False,
+            nojson: bool = False,
+            pretty: bool = False,
     ) -> List[str]:
         """
         将 go-ios 全局 options（--udid 等）转成参数列表
@@ -211,10 +211,10 @@ class GoIOSManager:
         return opts
 
     def run(
-        self,
-        args: List[str],
-        timeout: int = 120,
-        **opts: Any,
+            self,
+            args: List[str],
+            timeout: int = 120,
+            **opts: Any,
     ) -> Tuple[int, str, str]:
         """
         通用执行器：支持 go-iOS 全局 options（--udid/--address/...）。
@@ -420,11 +420,13 @@ class GoIOSManager:
                 for obj in app_list:
                     if not isinstance(obj, dict):
                         continue
-                    bid = str(obj.get("CFBundleIdentifier") or obj.get("bundleID") or obj.get("bundleId") or obj.get("Bundle") or obj.get("id") or "")
+                    bid = str(obj.get("CFBundleIdentifier") or obj.get("bundleID") or obj.get("bundleId") or obj.get(
+                        "Bundle") or obj.get("id") or "")
                     if bid == bundle_id:
                         exec_candidates.append(str(obj.get("CFBundleExecutable") or "").strip())
                         # 兜底：名称也作为候选
-                        name_candidate = str(obj.get("CFBundleDisplayName") or obj.get("CFBundleName") or obj.get("BundleName") or obj.get("name") or obj.get("Name") or "").strip()
+                        name_candidate = str(obj.get("CFBundleDisplayName") or obj.get("CFBundleName") or obj.get(
+                            "BundleName") or obj.get("name") or obj.get("Name") or "").strip()
                         if name_candidate:
                             exec_candidates.append(name_candidate)
                         break
@@ -468,12 +470,12 @@ class GoIOSManager:
         if basedir:
             args.append(f"--basedir={basedir}")
         code, out, err = self.run(args, udid=udid, timeout=300, **opts)
-        
+
         # 检查是否有错误信息，即使退出码为0
         output = out if out.strip() else err
         if "error" in output.lower() or "failed" in output.lower():
             return False, output
-        
+
         return code == 0, output
 
     def image_mount(self, udid: str, path: str, **opts: Any) -> Tuple[bool, str]:
@@ -525,7 +527,8 @@ class GoIOSManager:
                 universal_newlines=True,
                 encoding="utf-8",
                 errors="replace",
-                creationflags=(subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else 0,
+                creationflags=(
+                            subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else 0,
             )
         except (OSError, ValueError) as exc:
             logger.exception("启动 syslog 失败：%s", exc)
@@ -537,17 +540,17 @@ class GoIOSManager:
         """
         # 提取环境变量，避免传递给 _build_common_opts
         extra_env = opts.pop("extra_env", {})
-        
+
         cmd = (
-            [self.ios_bin]
-            + self._build_common_opts(udid=udid, **opts)
-            + ["screenshot", "--stream", "--port", str(port)]
+                [self.ios_bin]
+                + self._build_common_opts(udid=udid, **opts)
+                + ["screenshot", "--stream", "--port", str(port)]
         )
-        
+
         # 设置环境变量
         env = os.environ.copy()
         env.update({k: str(v) for k, v in extra_env.items()})
-        
+
         try:
             return subprocess.Popen(
                 cmd,
@@ -558,7 +561,8 @@ class GoIOSManager:
                 errors="replace",
                 env=env,
                 bufsize=0,  # 无缓冲，减少延迟
-                creationflags=(subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else 0,
+                creationflags=(
+                            subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else 0,
             )
         except (OSError, ValueError) as exc:
             logger.exception("启动 screenshot --stream 失败：%s", exc)
@@ -569,9 +573,9 @@ class GoIOSManager:
         启动端口转发（host_port -> target_port）；返回 Popen。
         """
         cmd = (
-            [self.ios_bin]
-            + self._build_common_opts(udid=udid, **opts)
-            + ["forward", str(host_port), str(target_port)]
+                [self.ios_bin]
+                + self._build_common_opts(udid=udid, **opts)
+                + ["forward", str(host_port), str(target_port)]
         )
         try:
             return subprocess.Popen(
@@ -600,18 +604,26 @@ class GoIOSManager:
 
     def crash_rm(self, udid: str, cwd: str, pattern: str, recursive: bool = False, **opts: Any) -> Tuple[bool, str]:
         candidates: List[List[str]] = []
-        # 优先尝试包含 cwd 的形式
+
+        # 根据 go-ios 命令格式：ios crash rm <cwd> <pattern> [options]
+        # 递归参数应该作为选项，不是位置参数
+
+        # 基础命令：ios crash rm <cwd> <pattern>
+        base_cmd = ["crash", "rm", cwd, pattern]
+        candidates.append(base_cmd)
+
+        # 如果指定了递归，添加递归选项
         if recursive:
-            candidates.append(["crash", "rm", "-r", cwd, pattern])
-            candidates.append(["crash", "rm", "--r", cwd, pattern])
-            candidates.append(["crash", "rm", "--recursive", cwd, pattern])
-        candidates.append(["crash", "rm", cwd, pattern])
-        # 再尝试不含 cwd 的形式
-        if recursive:
-            candidates.append(["crash", "rm", "-r", pattern])
-            candidates.append(["crash", "rm", "--r", pattern])
-            candidates.append(["crash", "rm", "--recursive", pattern])
-        candidates.append(["crash", "rm", pattern])
+            # 尝试不同的递归选项格式
+            recursive_cmds = [
+                ["crash", "rm", "-r", cwd, pattern],  # -r 选项
+                ["crash", "rm", "--r", cwd, pattern],  # --r 选项
+                ["crash", "rm", "--recursive", cwd, pattern]  # --recursive 选项
+            ]
+            candidates.extend(recursive_cmds)
+
+        # 记录尝试的命令用于调试
+        logger.debug("crash_rm 将尝试以下命令: %s", [candidates])
 
         last_msg = ""
         for args in candidates:
@@ -619,12 +631,20 @@ class GoIOSManager:
                 logger.debug("尝试 crash_rm 命令: %s", " ".join(args))
                 code, out, err = self.run(args, udid=udid, timeout=120, **opts)
                 msg = out if (out and out.strip()) else (err or "")
+
                 if code == 0:
+                    logger.debug("crash_rm 命令成功: %s", " ".join(args))
                     return True, msg
+
+                logger.debug("crash_rm 命令失败 (code=%d): %s", code, msg)
                 last_msg = msg
+
             except (OSError, ValueError) as exc:
                 last_msg = str(exc)
+                logger.debug("crash_rm 命令异常: %s", exc)
                 continue
+
+        logger.warning("所有 crash_rm 命令尝试都失败了")
         return False, last_msg
 
     def devmode_get(self, udid: str, **opts: Any) -> Tuple[bool, str]:
@@ -662,7 +682,8 @@ class GoIOSManager:
                 universal_newlines=True,
                 encoding="utf-8",
                 errors="replace",
-                creationflags=(subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else 0,
+                creationflags=(
+                            subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else 0,
             )
         except (OSError, ValueError) as exc:
             logger.exception("启动 syslog 失败：%s", exc)
@@ -678,7 +699,8 @@ class GoIOSManager:
                 universal_newlines=True,
                 encoding="utf-8",
                 errors="replace",
-                creationflags=(subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else 0,
+                creationflags=(
+                            subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else 0,
             )
         except (OSError, ValueError) as exc:
             logger.exception("启动 listen 失败：%s", exc)
