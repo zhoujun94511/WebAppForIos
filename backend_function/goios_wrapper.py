@@ -60,7 +60,7 @@ class GoIOSManager:
         elif any(x in m for x in ("x86_64", "amd64", "x64")):
             preferred += ["ios-amd64", "ios"]  # x86_64 Linux
         else:
-            preferred += ["ios"]  # 兜底
+            preferred += ["ios"]
 
         # 跨平台常见别名一并加入（用于 Mac/Win 或历史包）
         preferred += ["go-ios", "ios.exe", "go-ios.exe", "ios-arm64.exe", "ios-amd64.exe"]
@@ -318,8 +318,17 @@ class GoIOSManager:
             return code == 0, out_str
 
     def screenshot(self, udid: str, save_path: str, **opts: Any) -> Tuple[bool, str]:
-        args = ["screenshot", f"--output={save_path}"]  # <- 改这里
+        """
+        截图并保存到指定路径，自动确保目录存在。
+        """
+        try:
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        except Exception as e:
+            logger.warning("创建截图目录失败: %s", e)
+
+        args = ["screenshot", f"--output={save_path}"]
         code, out, err = self.run(args, udid=udid, timeout=180, **opts)
+
         if code == 0 and os.path.exists(save_path):
             return True, save_path
         return False, (out.strip() or err or "截屏失败")
@@ -333,13 +342,9 @@ class GoIOSManager:
         return code == 0, out if out.strip() else err
 
     def install_ipa(self, udid: str, ipa_path: str, **opts: Any) -> Tuple[bool, str]:
-        # ios install --path=<ipaOrAppFolder>
-        code, out, err = self.run(
-            ["install", "--path", ipa_path],
-            udid=udid,
-            timeout=1800,
-            **opts,
-        )
+        if not os.path.exists(ipa_path):
+            return False, f"IPA 文件不存在: {ipa_path}"
+        code, out, err = self.run(["install", "--path", ipa_path], udid=udid, timeout=1800, **opts)
         return code == 0, out if out.strip() else err
 
     def launch_app(self, udid: str, bundle_id: str, wait: bool = False, **opts: Any) -> Tuple[bool, str]:
@@ -465,21 +470,22 @@ class GoIOSManager:
         return code == 0, out if out.strip() else err
 
     def image_auto(self, udid: str, basedir: Optional[str] = None, **opts: Any) -> Tuple[bool, str]:
-        # ios image auto [--basedir=<where_dev_images_are_stored>]
         args = ["image", "auto"]
         if basedir:
+            try:
+                os.makedirs(basedir, exist_ok=True)
+            except Exception as e:
+                logger.warning("创建 image_auto basedir 失败: %s", e)
             args.append(f"--basedir={basedir}")
         code, out, err = self.run(args, udid=udid, timeout=300, **opts)
-
-        # 检查是否有错误信息，即使退出码为0
         output = out if out.strip() else err
         if "error" in output.lower() or "failed" in output.lower():
             return False, output
-
         return code == 0, output
 
     def image_mount(self, udid: str, path: str, **opts: Any) -> Tuple[bool, str]:
-        # ios image mount [--path=<imagepath>]
+        if not os.path.exists(path):
+            return False, f"镜像文件不存在: {path}"
         args = ["image", "mount", f"--path={path}"]
         code, out, err = self.run(args, udid=udid, timeout=300, **opts)
         return code == 0, out if out.strip() else err
@@ -534,20 +540,29 @@ class GoIOSManager:
             logger.exception("启动 syslog 失败：%s", exc)
             return None
 
-    def screenshot_stream_popen(self, udid: str, port: int = 3333, **opts: Any):
+    def screenshot_stream_popen(self, udid: str, port: int = 3333,
+                                save_dir: Optional[str] = None, **opts: Any):
         """
         启动 MJPEG 截屏流到 0.0.0.0:<port>；返回 Popen。
+        save_dir 用于保证临时录屏目录存在。
         """
+        # ✅ 确保保存目录存在
+        if save_dir:
+            try:
+                os.makedirs(save_dir, exist_ok=True)
+                logger.debug("确保录屏目录存在: %s", save_dir)
+            except Exception as e:
+                logger.warning("创建录屏目录失败: %s", e)
+
         # 提取环境变量，避免传递给 _build_common_opts
         extra_env = opts.pop("extra_env", {})
 
         cmd = (
-                [self.ios_bin]
-                + self._build_common_opts(udid=udid, **opts)
-                + ["screenshot", "--stream", "--port", str(port)]
+            [self.ios_bin]
+            + self._build_common_opts(udid=udid, **opts)
+            + ["screenshot", "--stream", "--port", str(port)]
         )
 
-        # 设置环境变量
         env = os.environ.copy()
         env.update({k: str(v) for k, v in extra_env.items()})
 
@@ -555,14 +570,14 @@ class GoIOSManager:
             return subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,  # 分离 stderr 和 stdout
+                stderr=subprocess.PIPE,
                 universal_newlines=True,
                 encoding="utf-8",
                 errors="replace",
                 env=env,
-                bufsize=0,  # 无缓冲，减少延迟
-                creationflags=(
-                            subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else 0,
+                bufsize=0,
+                creationflags=(subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP)
+                if os.name == 'nt' else 0,
             )
         except (OSError, ValueError) as exc:
             logger.exception("启动 screenshot --stream 失败：%s", exc)
@@ -591,15 +606,23 @@ class GoIOSManager:
             return None
 
     def crash_ls(self, udid: str, pattern: Optional[str] = None, **opts: Any) -> Tuple[bool, str]:
+        """
+        列出设备上的 crash 文件。
+        pattern 可选，用于按模式过滤。
+        """
         args = ["crash", "ls"]
         if pattern:
             args.append(pattern)
         code, out, err = self.run(args, udid=udid, timeout=120, **opts)
         return code == 0, out if out.strip() else err
 
+
     def crash_cp(self, udid: str, srcpattern: str, target_dir: str, **opts: Any) -> Tuple[bool, str]:
-        args = ["crash", "cp", srcpattern, target_dir]
-        code, out, err = self.run(args, udid=udid, timeout=300, **opts)
+        try:
+            os.makedirs(target_dir, exist_ok=True)
+        except Exception as e:
+            logger.warning("创建 crash_cp 目标目录失败: %s", e)
+        code, out, err = self.run(["crash", "cp", srcpattern, target_dir], udid=udid, timeout=300, **opts)
         return code == 0, out if out.strip() else err
 
     def crash_rm(self, udid: str, cwd: str, pattern: str, recursive: bool = False, **opts: Any) -> Tuple[bool, str]:
