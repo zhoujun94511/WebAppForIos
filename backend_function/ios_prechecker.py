@@ -1,0 +1,128 @@
+import time
+import logging
+import threading
+from typing import Tuple
+try:
+    from .tunnel_manager import TunnelManager
+    from .goios_wrapper import GoIOSManager
+    from .common_utils import find_free_port
+    from .config import Config
+    from .ddi_manager import ensure_developer_image
+except ImportError:
+    # 当作为独立模块运行时，使用绝对导入
+    from tunnel_manager import TunnelManager
+    from goios_wrapper import GoIOSManager
+    from common_utils import find_free_port
+    from config import Config
+    from ddi_manager import ensure_developer_image
+
+logger = logging.getLogger(__name__)
+
+
+class IOSPrechecker:
+    """
+    iOS 操作前的统一检查器：
+    1. UDID 是否存在
+    2. go-ios tunnel 是否已启动（iOS17+ 必需）
+    3. 是否挂载了匹配芯片身份的 Developer Image（对齐 AutoPilot）
+    """
+
+    def __init__(self, manager: GoIOSManager, tunnel: TunnelManager):
+        self.m = manager
+        self.tunnel = tunnel
+        self._tunnel_lock = threading.Lock()
+        self._tunnel_start_time = 0
+
+    def check_all(self, udid: str, skip_tunnel_check: bool = False) -> Tuple[bool, str]:
+        """
+        执行全量检查
+        :param udid: 设备UDID
+        :param skip_tunnel_check: 是否跳过tunnel检查（用于某些不需要tunnel的操作）
+        返回: (ok, msg)
+        """
+        # 1. 检查 UDID 是否存在
+        ok, out = self.m.list_devices(details=False)
+        if not ok:
+            return False, f"无法获取设备列表，请检查:\n1. iOS设备是否已连接\n2. 是否已信任此电脑\n3. go-ios是否正确安装"
+
+        if not out or udid not in out:
+            return False, f"设备 {udid} 未连接或未被识别"
+
+        # 2. 检查 tunnel 状态（可选跳过）
+        if not skip_tunnel_check:
+            ok, tunnel_msg = self.ensure_tunnel_running()
+            if not ok:
+                return False, tunnel_msg
+
+        # 3. 按芯片身份挂载开发者镜像（勿硬挂不匹配的 ddi-15F31d）
+        try:
+            extra_opts = self.tunnel.get_goios_opts(udid) if hasattr(self.tunnel, 'get_goios_opts') else {}
+            ok, out = ensure_developer_image(
+                self.m,
+                udid,
+                basedir=Config.DEVIMAGES_DIR,
+                tunnel_opts=extra_opts,
+                require_success=False,
+            )
+            if not ok:
+                # 镜像失败会导致 iPad/新机截图、连接受限——作为检查失败返回，便于前端提示
+                logger.error("开发者镜像挂载失败: %s", out)
+                return False, out
+        except (AttributeError, TypeError, RuntimeError, OSError, ValueError) as exc:
+            logger.warning("检查开发者镜像时异常: %s", exc)
+            return False, f"检查开发者镜像异常: {exc}"
+
+        return True, "设备检查通过"
+
+    def ensure_tunnel_running(self) -> Tuple[bool, str]:
+        """确保 tunnel 正在运行（公开入口，含智能重试）。"""
+        with self._tunnel_lock:
+            # 首先检查tunnel状态
+            is_running, status_msg = self.tunnel.status()
+            if is_running:
+                logger.info("Tunnel 已在运行")
+                return True, "Tunnel 正常运行"
+
+            # 如果最近刚尝试启动过，避免频繁重试
+            current_time = time.time()
+            if current_time - self._tunnel_start_time < 60:  # 60秒内不重复启动
+                return False, "Tunnel 启动中或最近启动失败，请稍后重试"
+
+            logger.warning("Tunnel 未运行，尝试启动...")
+            self._tunnel_start_time = current_time
+
+            # 寻找可用端口
+            port = find_free_port(start_port=60105, max_tries=20)
+            if not port:
+                return False, "无可用端口，无法启动 tunnel"
+
+            # 启动tunnel
+            ok, msg = self.tunnel.start(userspace=True, tunnel_info_port=port, retry_count=2)
+            if not ok:
+                return False, f"Tunnel 启动失败: {msg}\n\n可能的解决方案:\n1. 重新连接设备\n2. 重启应用\n3. 检查设备是否为iOS17+"
+
+            logger.info("Tunnel 启动成功，监听端口 %s", port)
+            return True, f"Tunnel 启动成功 (端口: {port})"
+
+    def _ensure_tunnel_running(self) -> Tuple[bool, str]:
+        """兼容旧调用名。"""
+        return self.ensure_tunnel_running()
+
+    def check_device_only(self, udid: str) -> Tuple[bool, str]:
+        """
+        仅检查设备连接状态，不检查tunnel
+        """
+        return self.check_all(udid, skip_tunnel_check=True)
+
+    def quick_check(self, udid: str) -> Tuple[bool, str]:
+        """
+        快速检查：只验证设备连接，不启动tunnel
+        """
+        ok, out = self.m.list_devices(details=False)
+        if not ok or not out:
+            return False, "无法获取设备列表"
+
+        if udid not in out:
+            return False, f"设备 {udid} 未连接"
+
+        return True, "设备连接正常"

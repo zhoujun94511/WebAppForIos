@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# IDE
+.idea/
+
+# 运行产物：日志、上传、下载的开发者镜像
+runtime/
+
+# 拆分前的旧目录，避免再次被提交
+uploads/
+ios_logs/
+ios_downloads/
+
+# IOSPrechecker 只提交 utils 与 wintun。
+# 可执行文件由压缩包解压生成，开发者镜像由程序下载或挂载时生成。
+IOSPrechecker/devimages/
+IOSPrechecker/executable/
+
+# 本机配对身份，含私钥
+selfIdentity.plist
