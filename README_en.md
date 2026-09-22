@@ -155,4 +155,14 @@ Routes live in `web_function/app.py`. Handlers are `backend_function/route_handl
 
 ---
 
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Acknowledgments
+
+Device-side operations in this project build on the open-source [go-ios](https://github.com/danielpaulus/go-ios) project. Thanks to Daniel Paulus and the go-ios maintainers and contributors.
+
+---
+
 Use this tool for development and test debugging. Follow local law and the Apple developer agreement.

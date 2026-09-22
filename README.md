@@ -155,4 +155,14 @@ docs/                   开发者镜像说明
 
 ---
 
+## 许可
+
+本项目采用 [MIT License](LICENSE)。
+
+## 致谢
+
+本项目的设备侧能力基于开源项目 [go-ios](https://github.com/danielpaulus/go-ios)，向 Daniel Paulus 及 go-ios 社区维护者致谢。
+
+---
+
 本工具用于开发与测试调试。使用时请遵守所在地法律与 Apple 开发者协议。
